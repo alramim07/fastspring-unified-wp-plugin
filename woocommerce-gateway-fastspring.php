@@ -150,6 +150,12 @@ if (!class_exists('fssg_WC_FastSpring')):
         {
             if ('fastspring' === $handle) {
                 $debug = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? 'true' : 'false';
+                // WordPress 6.0+ renders a default `id="{handle}-js"` attribute on
+                // every script tag. The FastSpring Store Builder Library requires a
+                // single `id="fsc-api"`, so strip the auto-generated id before we
+                // inject ours; otherwise the tag ends up with two id attributes and
+                // the browser keeps the first, breaking document.querySelector('#fsc-api').
+                $tag = preg_replace('/\sid=["\'][^"\']*["\']/', '', $tag, 1);
                 return str_replace(' src', ' id="fsc-api" data-storefront="' . $this->get_storefront_path() . '" data-before-requests-callback="fastspringBeforeRequestHandler" data-access-key="' . self::get_setting('access_key') . '" ' . ($debug ? 'data-debug="true" data-test="' . (self::get_setting('testmode') ? 'yes' : 'no') . '" data-version="' . FSSG_WC_FASTSPRING_VERSION . '" data-data-callback="dataCallbackFunction" data-error-callback="errorCallback"' : '') . ' data-popup-closed="fastspringPopupCloseHandler" src', $tag);
             }
             return $tag;
@@ -202,9 +208,6 @@ if (!class_exists('fssg_WC_FastSpring')):
             include_once dirname(__FILE__) . '/includes/admin/class-wc-fastspring-advanced-settings.php';
             include_once dirname(__FILE__) . '/includes/admin/class-wc-fastspring-admin-settings.php';
             include_once dirname(__FILE__) . '/includes/admin/class-wc-fastspring-upgrade.php';
-
-            // Express checkout (product page + cart page)
-            include_once dirname(__FILE__) . '/includes/class-fastspring-express.php';
 
             load_plugin_textdomain('woocommerce-gateway-fastspring', false, plugin_basename(dirname(__FILE__)) . '/languages');
 
