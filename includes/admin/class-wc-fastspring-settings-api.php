@@ -30,7 +30,6 @@ class WC_FastSpring_Admin {
 		return array(
 			'fs_api'            => __( 'API Settings', 'fastspring-split-gateways' ),
 			'fs_advanced'       => __( 'Advanced Settings', 'fastspring-split-gateways' ),
-			'fastspring'        => __( 'General', 'fastspring-split-gateways' ),
 			'fastspring_card'   => __( 'Credit / Debit Cards', 'fastspring-split-gateways' ),
 			'fastspring_paypal' => __( 'PayPal', 'fastspring-split-gateways' ),
 			'fastspring_googlepay' => __( 'Google Pay', 'fastspring-split-gateways' ),
@@ -113,7 +112,9 @@ if ( ! trait_exists( 'WC_FastSpring_Settings_Trait' ) ) :
 		 * @return array
 		 */
 		public function admin_nav_tab( $tabs ) {
-			if ( $this->id && $this->tab_title ) {
+			// The main `fastspring` gateway is intentionally not surfaced as a
+			// branded tab; its settings live under API Settings now.
+			if ( $this->id && $this->tab_title && 'fastspring' !== $this->id ) {
 				$tabs[ $this->id ] = $this->tab_title;
 			}
 			return $tabs;

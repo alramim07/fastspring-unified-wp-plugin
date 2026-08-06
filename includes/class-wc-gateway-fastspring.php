@@ -219,11 +219,16 @@ class fssg_WC_Gateway_FastSpring extends WC_Payment_Gateway
     }
 
     /**
-     * Initialise gateway settings form fields
+     * Initialise gateway settings form fields.
+     *
+     * The main "General" settings page was retired; all settings (enabled,
+     * title, description, icons, billing_address, credentials, mode) are
+     * managed from the branded API Settings screen, which persists to the
+     * same `woocommerce_fastspring_settings` option.
      */
     public function init_form_fields()
     {
-        $this->form_fields = include 'settings-fastspring.php';
+        $this->form_fields = array();
     }
 
     /**

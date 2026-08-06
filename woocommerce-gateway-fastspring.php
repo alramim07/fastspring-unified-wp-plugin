@@ -284,7 +284,7 @@ if (!class_exists('fssg_WC_FastSpring')):
 
             $bad = !self::get_setting('access_key') || !self::get_setting('storefront_path') || !self::get_setting('private_key');
 
-            if ($bad && !(isset($_GET['page'], $_GET['section']) && 'wc-settings' === $_GET['page'] && 'fastspring' === $_GET['section'])) {
+            if ($bad && !(isset($_GET['page'], $_GET['section']) && 'wc-settings' === $_GET['page'] && 'fs_api' === $_GET['section'])) {
                 $setting_link = self::get_setting_link();
                 $this->add_admin_notice('prompt_connect', 'notice notice-warning', sprintf(__('FastSpring is almost ready. To get started, <a href="%s">set your FastSpring credentials</a>.', 'woocommerce-gateway-fastspring'), $setting_link));
             }
@@ -361,7 +361,7 @@ if (!class_exists('fssg_WC_FastSpring')):
          */
         public function get_setting_link()
         {
-            return admin_url('admin.php?page=wc-settings&tab=checkout&section=fastspring');
+            return admin_url('admin.php?page=wc-settings&tab=checkout&section=fs_api');
         }
 
         /**

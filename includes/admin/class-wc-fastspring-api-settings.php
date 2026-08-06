@@ -73,7 +73,64 @@ if ( ! class_exists( 'WC_FastSpring_API_Settings' ) ) :
 		 */
 		public function init_form_fields() {
 			$this->form_fields = array(
-				'title'            => array(
+				'general'            => array(
+					'type'  => 'title',
+					'title' => __( 'General Settings', 'fastspring-split-gateways' ),
+				),
+				'general_description' => array(
+					'type'        => 'description',
+					'description' => __( 'Gateway display and behaviour settings, previously available under the General tab.', 'fastspring-split-gateways' ),
+				),
+				'enabled'            => array(
+					'title'       => __( 'Enable/Disable', 'woocommerce-gateway-fastspring' ),
+					'label'       => __( 'Enable FastSpring payment gateway', 'woocommerce-gateway-fastspring' ),
+					'type'        => 'checkbox',
+					'description' => '',
+					'default'     => 'no',
+				),
+				'title'              => array(
+					'title'       => __( 'Title', 'woocommerce-gateway-fastspring' ),
+					'type'        => 'text',
+					'description' => __( 'The title which the user sees during checkout. Keep it brief to avoid potential layout issues with icons.', 'woocommerce-gateway-fastspring' ),
+					'default'     => __( 'Pay with FastSpring', 'woocommerce-gateway-fastspring' ),
+					'desc_tip'    => false,
+				),
+				'description'        => array(
+					'title'       => __( 'Description', 'woocommerce-gateway-fastspring' ),
+					'type'        => 'text',
+					'description' => __( 'The lengthier description which the user sees once selecting this payment gateway.', 'woocommerce-gateway-fastspring' ),
+					'default'     => __( 'Pay with credit card, PayPal, Amazon Pay and more.', 'woocommerce-gateway-fastspring' ),
+					'desc_tip'    => false,
+				),
+				'icons'              => array(
+					'title'       => __( 'Payment Icons', 'woocommerce-gateway-fastspring' ),
+					'type'        => 'multiselect',
+					'description' => __( 'Select the payment method icons to show.', 'woocommerce-gateway-fastspring' ),
+					'default'     => array( 'paypal', 'visa', 'mastercard', 'amex' ),
+					'desc_tip'    => false,
+					'class'       => 'wc-enhanced-select',
+					'options'     => array(
+						'paypal'     => 'paypal',
+						'visa'       => 'visa',
+						'mastercard' => 'mastercard',
+						'amex'       => 'amex',
+						'discover'   => 'discover',
+						'jcb'        => 'jcb',
+						'diners'     => 'diners',
+						'ideal'      => 'ideal',
+						'unionpay'   => 'unionpay',
+						'sofort'     => 'sofort',
+						'giropay'    => 'giropay',
+					),
+				),
+				'billing_address'    => array(
+					'title'       => __( 'Billing Address Fields', 'woocommerce-gateway-fastspring' ),
+					'label'       => __( 'Remove billing address fields from checkout.', 'woocommerce-gateway-fastspring' ),
+					'type'        => 'checkbox',
+					'description' => __( 'If no other payment gateway requires these fields they can be removed as FastSpring does not use them.', 'woocommerce-gateway-fastspring' ),
+					'default'     => 'yes',
+				),
+				'api_settings_title' => array(
 					'type'  => 'title',
 					'title' => __( 'API Settings', 'fastspring-split-gateways' ),
 				),

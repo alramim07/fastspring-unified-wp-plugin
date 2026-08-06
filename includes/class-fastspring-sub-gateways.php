@@ -554,10 +554,13 @@ add_filter('woocommerce_available_payment_gateways', function ($gateways) {
 // 4. ADMIN TABS VISIBILITY
 add_filter('woocommerce_get_sections_checkout', function ($sections) {
   $current_section = isset($_GET['section']) ? sanitize_text_field($_GET['section']) : '';
-  $fs_sections = array('fastspring', 'fastspring_paypal', 'fastspring_card', 'fastspring_amazon', 'fastspring_wire', 'fastspring_googlepay', 'fastspring_alipay');
+  $fs_sections = array('fastspring_paypal', 'fastspring_card', 'fastspring_amazon', 'fastspring_wire', 'fastspring_googlepay', 'fastspring_alipay');
+
+  // The main "General" gateway no longer has its own section; all its settings
+  // are managed from API Settings.
+  unset($sections['fastspring']);
 
   if (in_array($current_section, $fs_sections)) {
-    $sections['fastspring'] = __('General', 'woocommerce');
     $sections['fastspring_paypal'] = __('FS: PayPal', 'woocommerce');
     $sections['fastspring_card'] = __('FS: Credit Card', 'woocommerce');
     $sections['fastspring_amazon'] = __('FS: Amazon Pay', 'woocommerce');
