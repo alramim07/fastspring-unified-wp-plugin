@@ -117,6 +117,35 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 					'desc_tip'    => true,
 					'description' => __( 'If enabled, the plugin will process a refund in FastSpring when the order status is set to cancelled.', 'fastspring-split-gateways' ),
 				),
+				'chargebacks'             => array(
+					'type'  => 'title',
+					'title' => __( 'Chargeback Settings', 'fastspring-split-gateways' ),
+				),
+				'chargeback_created'      => array(
+					'title'       => __( 'Chargeback Created', 'fastspring-split-gateways' ),
+					'type'        => 'checkbox',
+					'default'     => 'yes',
+					'desc_tip'    => true,
+					'description' => __( 'If enabled, the plugin listens for the <strong>chargeback.created</strong> webhook and sets the order\'s status to the configured value.', 'fastspring-split-gateways' ),
+				),
+				'chargeback_created_status' => array(
+					'title'             => __( 'Chargeback Created Order Status', 'fastspring-split-gateways' ),
+					'type'              => 'select',
+					'default'           => 'wc-on-hold',
+					'options'           => wc_get_order_statuses(),
+					'desc_tip'          => true,
+					'description'       => __( 'The status assigned to an order when a chargeback is filed.', 'fastspring-split-gateways' ),
+					'custom_attributes' => array(
+						'data-show-if' => array( 'chargeback_created' => true ),
+					),
+				),
+				'chargeback_closed'       => array(
+					'title'       => __( 'Chargeback Closed', 'fastspring-split-gateways' ),
+					'type'        => 'checkbox',
+					'default'     => 'yes',
+					'desc_tip'    => true,
+					'description' => __( 'If enabled, the plugin restores the order to its pre-chargeback status when FastSpring closes the chargeback.', 'fastspring-split-gateways' ),
+				),
 				'display'                 => array(
 					'type'  => 'title',
 					'title' => __( 'Display Settings', 'fastspring-split-gateways' ),
@@ -185,6 +214,24 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 		 */
 		public function is_refund_cancel_enabled() {
 			return $this->is_active( 'refund_cancel' );
+		}
+
+		/**
+		 * Whether the plugin should react to chargeback.created webhooks.
+		 *
+		 * @return bool
+		 */
+		public function is_chargeback_created_enabled() {
+			return $this->is_active( 'chargeback_created' );
+		}
+
+		/**
+		 * Whether the plugin should restore the pre-chargeback status.
+		 *
+		 * @return bool
+		 */
+		public function is_chargeback_closed_enabled() {
+			return $this->is_active( 'chargeback_closed' );
 		}
 	}
 
