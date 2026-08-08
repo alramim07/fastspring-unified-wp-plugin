@@ -217,6 +217,9 @@ if (!class_exists('fssg_WC_FastSpring')):
             add_filter('script_loader_tag', array($this, 'modify_loading_scripts'), 20, 2);
             add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'plugin_action_links'));
             include_once dirname(__FILE__) . '/includes/class-wc-gateway-fastspring-handler.php';
+            include_once dirname(__FILE__) . '/includes/class-wc-fastspring-order-flow.php';
+
+            new WC_FastSpring_Order_Flow();
         }
 
         /**
