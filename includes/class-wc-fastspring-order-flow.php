@@ -23,7 +23,7 @@ if ( ! class_exists( 'WC_FastSpring_Order_Flow' ) ) :
 		 * Constructor.
 		 */
 		public function __construct() {
-			add_filter( 'woocommerce_payment_complete_order_status', array( $this, 'payment_complete_status' ), 10, 2 );
+			add_filter( 'woocommerce_payment_complete_order_status', array( $this, 'payment_complete_status' ), 10, 3 );
 			add_action( 'woocommerce_order_status_cancelled', array( $this, 'order_cancelled' ), 10, 1 );
 		}
 
@@ -39,14 +39,21 @@ if ( ! class_exists( 'WC_FastSpring_Order_Flow' ) ) :
 		/**
 		 * Applies the configured Order Completion Status.
 		 *
-		 * WooCommerce's own filter is passed a prefixed status (e.g. "completed").
+		 * WooCommerce's own filter is passed a bare status (e.g. "completed").
 		 * The option stores the WC status key (e.g. "wc-completed").
 		 *
-		 * @param string $status   Default completion status.
-		 * @param int    $order_id Order ID.
+		 * Only affects orders paid through the FastSpring gateway.
+		 *
+		 * @param string   $status   Default completion status.
+		 * @param int      $order_id Order ID.
+		 * @param WC_Order $order    Order object.
 		 * @return string
 		 */
-		public function payment_complete_status( $status, $order_id ) {
+		public function payment_complete_status( $status, $order_id, $order ) {
+			if ( ! $order || 'fastspring' !== $order->get_payment_method() ) {
+				return $status;
+			}
+
 			$settings   = $this->get_advanced_settings();
 			$configured = isset( $settings['order_completion_status'] ) ? $settings['order_completion_status'] : 'wc-completed';
 
@@ -56,7 +63,7 @@ if ( ! class_exists( 'WC_FastSpring_Order_Flow' ) ) :
 			}
 
 			// Any other configured status (strip the wc- prefix WooCommerce expects).
-			$slug = str_replace( 'wc-', '', sanitize_key( $configured ) );
+			$slug = preg_replace( '/^wc-/', '', sanitize_key( $configured ) );
 			return $slug ? $slug : $status;
 		}
 
