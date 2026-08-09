@@ -256,6 +256,49 @@ class fssg_WC_Gateway_FastSpring_Handler
     }
 
     /**
+     * Finds one WC order by FastSpring order reference (fs_order_id meta or
+     * transaction id). Used by events that carry no tags, e.g. chargebacks.
+     *
+     * @throws Exception
+     *
+     * @param string $fs_order_id FastSpring order ID.
+     * @return WC_Order WooCommerce order
+     */
+    public function find_order_by_fastspring_id($fs_order_id)
+    {
+        $fs_order_id = sanitize_text_field($fs_order_id);
+
+        if (!$fs_order_id) {
+            throw new Exception('No FastSpring order ID provided');
+        }
+
+        $orders = wc_get_orders(
+            array(
+                'limit'      => 1,
+                'type'       => 'shop_order',
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key'   => 'fs_order_id',
+                        'value' => $fs_order_id,
+                    ),
+                    array(
+                        'key'   => '_transaction_id',
+                        'value' => $fs_order_id,
+                    ),
+                ),
+            )
+        );
+
+        if (empty($orders)) {
+            $this->log(sprintf('No order found with FS order ID %s', $fs_order_id));
+            throw new Exception(sprintf('Unable to locate order with FS order ID %s', $fs_order_id));
+        }
+
+        return $orders[0];
+    }
+
+    /**
      * Handles the validated FS webhook request
      *
      * @throws Exception
@@ -328,13 +371,78 @@ class fssg_WC_Gateway_FastSpring_Handler
     }
 
     /**
-     * Handles the order.failed webhook
+     * Handles the chargeback.created webhook.
+     *
+     * @param array $payload Webhook data
+     */
+    public function handle_webhook_request_chargeback_created($payload)
+    {
+        $data = isset($payload->data) && is_object($payload->data) ? $payload->data : $payload;
+
+        $fs_order_id = isset($data->order) ? sanitize_text_field($data->order) : '';
+        $order       = $this->find_order_by_fastspring_id($fs_order_id);
+
+        $settings = get_option('woocommerce_fs_advanced_settings', array());
+        if (empty($settings['chargeback_created']) || 'yes' !== $settings['chargeback_created']) {
+            $this->log(sprintf('Chargeback created webhook received but handler disabled for order %s', $order->get_id()));
+            return;
+        }
+
+        $order->update_meta_data('_fs_chargeback_prev_status', $order->get_status());
+        $order->save();
+
+        $status   = isset($settings['chargeback_created_status']) ? $settings['chargeback_created_status'] : 'wc-on-hold';
+        $reason   = isset($data->reasonDescription) ? sanitize_text_field($data->reasonDescription) : '';
+        $code     = isset($data->reasonCode) ? sanitize_text_field($data->reasonCode) : '';
+        $amount   = isset($data->chargebackAmount) ? wc_format_decimal($data->chargebackAmount) : '';
+        $currency = isset($data->currency) ? sanitize_text_field($data->currency) : '';
+
+        $order->update_status(
+            $status,
+            sprintf(__('FastSpring chargeback filed (reason: %1$s, code: %2$s, amount: %3$s %4$s).', 'fastspring-split-gateways'), $reason, $code, $amount, $currency)
+        );
+
+        $this->log(sprintf('Order %s set to %s on chargeback', $order->get_id(), $status));
+    }
+
+    /**
+     * Handles the return.created webhook.
+     *
+     * A chargeback-originated return (data.type = CHARGEBACK) restores the
+     * pre-chargeback status when chargeback_closed is enabled. All other
+     * returns mark the order refunded.
      *
      * @param array $payload Webhook data
      */
     public function handle_webhook_request_order_refunded($payload)
     {
-        $order = $this->find_order_by_fastspring_tag($payload);
+        $data = isset($payload->data) && is_object($payload->data) ? $payload->data : $payload;
+
+        $fs_order_id = '';
+        if (isset($data->original) && isset($data->original->order)) {
+            $fs_order_id = sanitize_text_field($data->original->order);
+        } elseif (isset($data->reference)) {
+            $fs_order_id = sanitize_text_field($data->reference);
+        }
+
+        $order = $this->find_order_by_fastspring_id($fs_order_id);
+
+        $type        = isset($data->type) ? strtoupper(sanitize_text_field($data->type)) : 'RETURN';
+        $prev_status = $order->get_meta('_fs_chargeback_prev_status');
+
+        if ('CHARGEBACK' === $type && $prev_status) {
+            $settings = get_option('woocommerce_fs_advanced_settings', array());
+            $enabled  = isset($settings['chargeback_closed']) ? ('yes' === $settings['chargeback_closed']) : true;
+
+            if ($enabled) {
+                $order->update_status($prev_status, __('FastSpring chargeback closed - order status restored.', 'fastspring-split-gateways'));
+                $order->delete_meta_data('_fs_chargeback_prev_status');
+                $order->save();
+                $this->log(sprintf('Order %s restored to %s after chargeback closed', $order->get_id(), $prev_status));
+                return;
+            }
+        }
+
         $this->log(sprintf('Marking order ID %s as refunded', $order->get_id()));
         $order->update_status('refunded');
     }
