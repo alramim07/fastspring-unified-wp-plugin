@@ -259,6 +259,10 @@ class fssg_WC_Gateway_FastSpring_Handler
      * Finds one WC order by FastSpring order reference (fs_order_id meta or
      * transaction id). Used by events that carry no tags, e.g. chargebacks.
      *
+     * The legacy CPT order data store does not support meta_query in
+     * WC_Order_Query (WooCommerce >= 9.2), so this runs two supported
+     * top-level meta_key/meta_value lookups instead.
+     *
      * @throws Exception
      *
      * @param string $fs_order_id FastSpring order ID.
@@ -276,19 +280,21 @@ class fssg_WC_Gateway_FastSpring_Handler
             array(
                 'limit'      => 1,
                 'type'       => 'shop_order',
-                'meta_query' => array(
-                    'relation' => 'OR',
-                    array(
-                        'key'   => 'fs_order_id',
-                        'value' => $fs_order_id,
-                    ),
-                    array(
-                        'key'   => '_transaction_id',
-                        'value' => $fs_order_id,
-                    ),
-                ),
+                'meta_key'   => 'fs_order_id',
+                'meta_value' => $fs_order_id,
             )
         );
+
+        if (empty($orders)) {
+            $orders = wc_get_orders(
+                array(
+                    'limit'      => 1,
+                    'type'       => 'shop_order',
+                    'meta_key'   => '_transaction_id',
+                    'meta_value' => $fs_order_id,
+                )
+            );
+        }
 
         if (empty($orders)) {
             $this->log(sprintf('No order found with FS order ID %s', $fs_order_id));
