@@ -68,13 +68,87 @@ if ( ! class_exists( 'WC_FastSpring_Order_Flow' ) ) :
 		}
 
 		/**
-		 * Handles refund-on-cancel. Implemented in Task 3.
+		 * Processes a FastSpring refund when an order is cancelled.
+		 *
+		 * Idempotent via the _fs_refund_requested meta. FastSpring then fires
+		 * return.created, which flips the order to refunded.
 		 *
 		 * @param int $order_id Order ID.
 		 * @return void
 		 */
 		public function order_cancelled( $order_id ) {
-			// Stub - filled in Task 3.
+			$settings = $this->get_advanced_settings();
+
+			if ( empty( $settings['refund_cancel'] ) || 'yes' !== $settings['refund_cancel'] ) {
+				return;
+			}
+
+			$order = wc_get_order( $order_id );
+			if ( ! $order ) {
+				return;
+			}
+
+			$fs_order_id = $order->get_meta( 'fs_order_id' );
+			if ( ! $fs_order_id ) {
+				$fs_order_id = $order->get_transaction_id();
+			}
+			if ( ! $fs_order_id ) {
+				$this->log( sprintf( 'Refund on cancel skipped for order %s - no FastSpring reference', $order_id ) );
+				return;
+			}
+
+			// Idempotency: only request a refund once.
+			if ( $order->get_meta( '_fs_refund_requested' ) ) {
+				return;
+			}
+
+			$api_username = fssg_WC_FastSpring::get_setting( 'api_username' );
+			$api_password = fssg_WC_FastSpring::get_setting( 'api_password' );
+			if ( empty( $api_username ) || empty( $api_password ) ) {
+				$this->log( 'Refund on cancel skipped - no API credentials' );
+				return;
+			}
+
+			$body = array(
+				'orderId'  => sanitize_text_field( $fs_order_id ),
+				'reason'   => 'Order cancelled',
+				'amount'   => (float) $order->get_total(),
+				'currency' => $order->get_currency(),
+			);
+
+			$response = wp_remote_post(
+				'https://api.fastspring.com/returns',
+				array(
+					'timeout' => 15,
+					'headers' => array(
+						'Authorization' => 'Basic ' . base64_encode( $api_username . ':' . $api_password ),
+						'Content-Type'  => 'application/json',
+						'Accept'        => 'application/json',
+					),
+					'body'    => wp_json_encode( $body ),
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				$this->log( sprintf( 'Refund on cancel failed for order %s: %s', $order_id, $response->get_error_message() ) );
+				$order->add_order_note( __( 'FastSpring refund request failed (network error).', 'fastspring-split-gateways' ) );
+				$order->save();
+				return;
+			}
+
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			if ( $code < 200 || $code >= 300 ) {
+				$this->log( sprintf( 'Refund on cancel failed for order %s (HTTP %s)', $order_id, $code ) );
+				$order->add_order_note( __( 'FastSpring refund request failed. Please refund manually.', 'fastspring-split-gateways' ) );
+				$order->save();
+				return;
+			}
+
+			$order->update_meta_data( '_fs_refund_requested', current_time( 'mysql' ) );
+			$order->add_order_note( __( 'FastSpring refund requested for cancelled order.', 'fastspring-split-gateways' ) );
+			$order->save();
+
+			$this->log( sprintf( 'Refund on cancel requested for order %s (FS %s)', $order_id, $fs_order_id ) );
 		}
 
 		/**

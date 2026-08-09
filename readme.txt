@@ -5,7 +5,7 @@ Tags: fastspring, woocommerce, payment gateway, checkout, split payments
 Requires at least: 6.0
 Tested up to: 6.4
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,6 +41,20 @@ No. The plugin intelligently ensures that payments are mapped correctly back to 
 2. placeholder-2.png - Checkout View with Individual FastSpring Methods
 
 == Changelog ==
+
+= 1.3.0 =
+* Added AliPay as a full payment gateway (separate checkout method, admin section, icon).
+* Added the AliPay preset to the gateway icon picker and bundled its icon asset.
+* Admin Payments overview now shows real brand icons for every gateway instead of the generic placeholder.
+
+= 1.2.0 =
+* Official FastSpring logo in the admin header.
+* Preset icon picker with custom image upload for each gateway.
+* Icons are now stored as slugs and resolved locally.
+
+= 1.1.0 =
+* Branded API and Advanced settings screens.
+* Individual branding for all split gateway sections.
 
 = 1.0.0 =
 * Initial release of FastSpring Split Gateways.
