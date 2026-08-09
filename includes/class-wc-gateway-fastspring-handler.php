@@ -389,20 +389,23 @@ class fssg_WC_Gateway_FastSpring_Handler
 
         $secret = self::get_setting('webhook_secret');
 
-        $raw_body = file_get_contents('php://input');
-        $hash = base64_encode(hash_hmac('sha256', $raw_body, $secret, true));
-
-        $sig = isset($_SERVER['HTTP_X_FS_SIGNATURE']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FS_SIGNATURE'])) : '';
-
-        if (empty($sig)) {
-            $this->log('No secret provided by FastSpring webhook');
+        // Without a configured secret we cannot verify signatures. Accept
+        // unverified requests (legacy/dev behavior) so the endpoint stays usable.
+        if (empty($secret)) {
+            $this->log('Webhook secret not configured - accepting unverified request');
             return true;
         }
 
-        if (empty($secret)) {
-            $this->log('Invalid webhook secret');
+        $sig = isset($_SERVER['HTTP_X_FS_SIGNATURE']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FS_SIGNATURE'])) : '';
+
+        // A secret is configured: a signed request is mandatory.
+        if (empty($sig)) {
+            $this->log('Missing X-FS-Signature header for webhook request');
             return false;
         }
+
+        $raw_body = file_get_contents('php://input');
+        $hash = base64_encode(hash_hmac('sha256', $raw_body, $secret, true));
 
         return hash_equals($sig, $hash);
     }
