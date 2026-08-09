@@ -88,6 +88,11 @@ if ( ! class_exists( 'WC_FastSpring_Order_Flow' ) ) :
 				return;
 			}
 
+			// Only refund orders paid through the FastSpring gateway.
+			if ( 'fastspring' !== $order->get_payment_method() ) {
+				return;
+			}
+
 			$fs_order_id = $order->get_meta( 'fs_order_id' );
 			if ( ! $fs_order_id ) {
 				$fs_order_id = $order->get_transaction_id();
