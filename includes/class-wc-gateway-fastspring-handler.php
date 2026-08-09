@@ -191,6 +191,7 @@ class fssg_WC_Gateway_FastSpring_Handler
     public function init()
     {
         add_action('wc_ajax_fssg_wc_fastspring_get_receipt', array($this, 'ajax_get_receipt'));
+        add_action('wc_ajax_wc_fastspring_get_receipt', array($this, 'ajax_get_receipt'));
         //add_action('wc_ajax_fssg_wc_fastspring_get_payload', array($this, 'ajax_get_payload'));
 
         add_action('woocommerce_api_wc_gateway_fastspring', array($this, 'listen_webhook_request'));
@@ -202,17 +203,26 @@ class fssg_WC_Gateway_FastSpring_Handler
      */
     public function listen_webhook_request()
     {
-        $events = json_decode(file_get_contents('php://input'));
+        $body = json_decode(file_get_contents('php://input'));
 
         if (!$this->is_valid_webhook_request()) {
             $this->log('Invalid webhook request - check secret');
             return wp_send_json_error();
         }
 
-        if (is_array($events)) {
-            foreach ($events as $event) {
-                do_action('woocommerce_fastspring_handle_webhook_request', $event);
+        // FastSpring delivers an envelope: {"events":[{type,data}, ...]}.
+        $events = (isset($body->events) && is_array($body->events)) ? $body->events : array();
+
+        if (empty($events)) {
+            $this->log('No events found in webhook request');
+            return wp_send_json_error();
+        }
+
+        foreach ($events as $event) {
+            if (!is_object($event)) {
+                continue;
             }
+            $this->handle_webhook_request($event);
         }
 
         return wp_send_json_success();
@@ -278,6 +288,10 @@ class fssg_WC_Gateway_FastSpring_Handler
                   $this->handle_webhook_request_subscription_activate($payload);
                   break;
 
+                case 'chargeback.created':
+                  $this->handle_webhook_request_chargeback_created($payload);
+                  break;
+
                 case 'subscription.updated':
                 //$this->handle_webhook_request_subscription_canceled($payload);
                 //break;
@@ -288,9 +302,10 @@ class fssg_WC_Gateway_FastSpring_Handler
                 }
 
             $this->log(json_encode($payload));
-            return wp_send_json_success();
+            return true;
         } catch (Exception $e) {
-            return wp_send_json_error($e->getMessage());
+            $this->log(sprintf('Webhook handler error: %s', $e->getMessage()));
+            return false;
         }
     }
 
