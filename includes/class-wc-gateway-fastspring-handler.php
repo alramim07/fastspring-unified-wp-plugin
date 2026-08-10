@@ -280,6 +280,8 @@ class fssg_WC_Gateway_FastSpring_Handler
             array(
                 'limit'      => 1,
                 'type'       => 'shop_order',
+                'orderby'    => 'date',
+                'order'      => 'DESC',
                 'meta_key'   => 'fs_order_id',
                 'meta_value' => $fs_order_id,
             )
@@ -290,6 +292,8 @@ class fssg_WC_Gateway_FastSpring_Handler
                 array(
                     'limit'      => 1,
                     'type'       => 'shop_order',
+                    'orderby'    => 'date',
+                    'order'      => 'DESC',
                     'meta_key'   => '_transaction_id',
                     'meta_value' => $fs_order_id,
                 )
@@ -394,10 +398,16 @@ class fssg_WC_Gateway_FastSpring_Handler
             return;
         }
 
-        $order->update_meta_data('_fs_chargeback_prev_status', $order->get_status());
-        $order->save();
+        $status      = isset($settings['chargeback_created_status']) ? $settings['chargeback_created_status'] : 'wc-on-hold';
+        $status_slug = preg_replace('/^wc-/', '', sanitize_key($status));
 
-        $status   = isset($settings['chargeback_created_status']) ? $settings['chargeback_created_status'] : 'wc-on-hold';
+        // Capture the pre-chargeback status only when the status will actually
+        // change, so re-delivered chargeback.created events cannot clobber it.
+        if ($status_slug && $status_slug !== $order->get_status()) {
+            $order->update_meta_data('_fs_chargeback_prev_status', $order->get_status());
+            $order->save();
+        }
+
         $reason   = isset($data->reasonDescription) ? sanitize_text_field($data->reasonDescription) : '';
         $code     = isset($data->reasonCode) ? sanitize_text_field($data->reasonCode) : '';
         $amount   = isset($data->chargebackAmount) ? wc_format_decimal($data->chargebackAmount) : '';
@@ -441,12 +451,20 @@ class fssg_WC_Gateway_FastSpring_Handler
             $enabled  = isset($settings['chargeback_closed']) ? ('yes' === $settings['chargeback_closed']) : true;
 
             if ($enabled) {
+                $order->update_meta_data('_fs_chargeback_closed', current_time('mysql'));
                 $order->update_status($prev_status, __('FastSpring chargeback closed - order status restored.', 'fastspring-split-gateways'));
                 $order->delete_meta_data('_fs_chargeback_prev_status');
                 $order->save();
                 $this->log(sprintf('Order %s restored to %s after chargeback closed', $order->get_id(), $prev_status));
                 return;
             }
+        }
+
+        // Idempotency: a re-delivered CHARGEBACK return (already restored) must
+        // not flip the order to refunded.
+        if ('CHARGEBACK' === $type && $order->get_meta('_fs_chargeback_closed')) {
+            $this->log(sprintf('Chargeback return already handled for order %s - skipping', $order->get_id()));
+            return;
         }
 
         $this->log(sprintf('Marking order ID %s as refunded', $order->get_id()));
