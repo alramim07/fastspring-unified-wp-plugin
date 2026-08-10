@@ -218,8 +218,11 @@ class fssg_WC_Gateway_FastSpring_Handler
             // Get API order status if available
             $status = $this->get_order_status($fs_order_id, $order_details);
 
-            // Remove cart
-            WC()->cart->empty_cart();
+            // Remove cart (unless this was a product-page express purchase,
+            // which never used the cart in the first place).
+            if ('product' !== $order->get_meta('_fssg_express_source')) {
+                WC()->cart->empty_cart();
+            }
 
             $order->set_transaction_id(sanitize_text_field($payload->reference));
             $order->update_meta_data('fs_order_id', sanitize_text_field($payload->id));

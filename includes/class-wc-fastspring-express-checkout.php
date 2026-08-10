@@ -101,7 +101,9 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 					'express' => wp_create_nonce( 'wc-fastspring-express' ),
 				),
 			);
-			wp_localize_script( 'fs-express-checkout', 'woocommerce_fastspring_params', apply_filters( 'woocommerce_fastspring_params', $params ) );
+			// A distinct global avoids clobbering the checkout script's
+			// woocommerce_fastspring_params when both load on the same page.
+			wp_localize_script( 'fs-express-checkout', 'woocommerce_fastspring_express_params', apply_filters( 'woocommerce_fastspring_express_params', $params ) );
 		}
 
 		/**
@@ -124,6 +126,12 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 
 			global $product;
 			if ( ! $product ) {
+				return;
+			}
+
+			// Only simple, purchasable products have a definitive price for the
+			// express payload (variable products need a selected variation).
+			if ( ! $product->is_type( 'simple' ) || ! $product->is_purchasable() ) {
 				return;
 			}
 
@@ -251,6 +259,7 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 
 			$order->calculate_totals();
 			$order->update_status( 'pending', __( 'Express checkout initiated.', 'fastspring-split-gateways' ) );
+			$order->add_meta_data( '_fssg_express_source', 'product' );
 			$order->save();
 
 			return $order;
@@ -287,6 +296,7 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 
 			$order->calculate_totals();
 			$order->update_status( 'pending', __( 'Express checkout initiated.', 'fastspring-split-gateways' ) );
+			$order->add_meta_data( '_fssg_express_source', 'cart' );
 			$order->save();
 
 			// The cart payload builder reads order_awaiting_payment for tags +
@@ -315,6 +325,9 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 			}
 
 			if ( $is_cart ) {
+				if ( WC()->cart->is_empty() ) {
+					wp_send_json_error( 'Cart is empty' );
+				}
 				$order   = $this->create_order_from_cart();
 				$session = fssg_WC_Gateway_FastSpring_Builder::get_secure_json_payload( $this->to_gateway_id( $method ) );
 			} else {
