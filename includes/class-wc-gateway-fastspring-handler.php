@@ -71,37 +71,112 @@ class fssg_WC_Gateway_FastSpring_Handler
             return 'pending';
         }
 
-        $url = 'https://api.fastspring.com/orders/' . rawurlencode(sanitize_text_field($id));
-
-        $auth = base64_encode(sanitize_text_field(self::get_setting('api_username')) . ':' . sanitize_text_field(self::get_setting('api_password')));
-
-        $response = wp_remote_get($url, array(
-            'timeout' => 15,
-            'headers' => array(
-                'Authorization' => 'Basic ' . $auth,
-                'User-Agent'    => 'Mozilla/5.0',
-            ),
-        ));
-
-        if (is_wp_error($response)) {
-            $this->log(sprintf('API order %s check failed: %s', $id, $response->get_error_message()));
-            return 'pending';
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-        if (200 !== (int) $code) {
-            $this->log(sprintf('API order %s not found (HTTP %s)', $id, $code));
-            return 'pending';
-        }
-
-        $data = json_decode(wp_remote_retrieve_body($response));
+        $data = $this->get_order_details($id);
 
         if ($data && isset($data->completed) && true === $data->completed) {
             $this->log(sprintf('API order %s completion checked', $id));
             return 'completed';
         }
+
         $this->log(sprintf('API order %s not found', $id));
         return 'pending';
+    }
+
+    /**
+     * Fetches FastSpring order details via the Orders API.
+     *
+     * @param string $id FastSpring order ID.
+     * @return object|null Decoded response body, or null on failure.
+     */
+    public function get_order_details($id)
+    {
+        if (empty(self::get_setting('api_username')) || empty(self::get_setting('api_password'))) {
+            return null;
+        }
+
+        $url  = 'https://api.fastspring.com/orders/' . rawurlencode(sanitize_text_field($id));
+        $auth = base64_encode(sanitize_text_field(self::get_setting('api_username')) . ':' . sanitize_text_field(self::get_setting('api_password')));
+
+        $response = wp_remote_get(
+            $url,
+            array(
+                'timeout' => 15,
+                'headers' => array(
+                    'Authorization' => 'Basic ' . $auth,
+                    'User-Agent'    => 'Mozilla/5.0',
+                ),
+            )
+        );
+
+        if (is_wp_error($response)) {
+            $this->log(sprintf('API order %s details failed: %s', $id, $response->get_error_message()));
+            return null;
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($response);
+        if (200 !== $code) {
+            $this->log(sprintf('API order %s details not found (HTTP %s)', $id, $code));
+            return null;
+        }
+
+        return json_decode(wp_remote_retrieve_body($response));
+    }
+
+    /**
+     * Copies customer/address fields from a FastSpring order object into a
+     * WooCommerce order, but only for fields the WC order is missing.
+     * All values are sanitized.
+     *
+     * @param WC_Order    $order WooCommerce order.
+     * @param object|null $data  FastSpring order details.
+     * @return void
+     */
+    public function copy_customer_fields($order, $data)
+    {
+        if (!$order || !is_object($data)) {
+            return;
+        }
+
+        $map = array(
+            'billing_first_name' => array('customer', 'first'),
+            'billing_last_name'  => array('customer', 'last'),
+            'billing_email'      => array('customer', 'email'),
+            'billing_phone'      => array('customer', 'phone'),
+            'billing_city'       => array('address', 'city'),
+            'billing_postcode'   => array('address', 'postalCode'),
+            'billing_country'    => array('address', 'country'),
+            'billing_state'      => array('address', 'regionCode'),
+            'billing_address_1'  => array('address', 'addressLine1'),
+            'billing_address_2'  => array('address', 'addressLine2'),
+        );
+
+        $copied = false;
+
+        foreach ($map as $meta_key => $path) {
+            if ('' !== $order->get_meta('_' . $meta_key)) {
+                continue;
+            }
+
+            $node = $data;
+            foreach ($path as $key) {
+                if (isset($node->$key)) {
+                    $node = $node->$key;
+                } else {
+                    $node = null;
+                    break;
+                }
+            }
+
+            if (null !== $node && '' !== $node) {
+                $order->update_meta_data('_' . $meta_key, sanitize_text_field((string) $node));
+                $copied = true;
+            }
+        }
+
+        if ($copied) {
+            $order->save();
+            $this->log(sprintf('Copied customer details from FastSpring for order %s', $order->get_id()));
+        }
     }
 
     /**
@@ -144,6 +219,7 @@ class fssg_WC_Gateway_FastSpring_Handler
             if ($status === 'completed' && $order->payment_complete($payload->reference)) {
                 $this->log(sprintf('Marking order ID %s as completed', $order->get_id()));
                 $order->add_order_note(sprintf(__('FastSpring payment approved (ID: %1$s)', 'woocommerce'), $order->get_id()));
+                $this->copy_customer_fields($order, $this->get_order_details(isset($payload->id) ? sanitize_text_field($payload->id) : ''));
             }
             // We could have a race condition where FS already called webhook so lets not assume its pending
             elseif ($order_status != 'completed') {
