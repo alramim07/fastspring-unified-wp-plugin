@@ -1033,7 +1033,9 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 					'express' => wp_create_nonce( 'wc-fastspring-express' ),
 				),
 			);
-			wp_localize_script( 'fs-express-checkout', 'woocommerce_fastspring_params', apply_filters( 'woocommerce_fastspring_params', $params ) );
+			// A distinct global avoids clobbering the checkout script's
+			// woocommerce_fastspring_params when both load on the same page.
+			wp_localize_script( 'fs-express-checkout', 'woocommerce_fastspring_express_params', apply_filters( 'woocommerce_fastspring_express_params', $params ) );
 		}
 
 		/**
@@ -1297,7 +1299,7 @@ Expected: `No syntax errors detected` for both.
 Open the product page, then in the browser console run (adjust nonce by first checking the page source for `wc-fastspring-express` nonce):
 
 ```js
-fetch(woocommerce_fastspring_params.ajax_url.replace('%%endpoint%%', 'fssg_wc_fastspring_express_order'), {
+fetch(woocommerce_fastspring_express_params.ajax_url.replace('%%endpoint%%', 'fssg_wc_fastspring_express_order'), {
   method: 'POST',
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   body: new URLSearchParams({
@@ -1336,7 +1338,7 @@ Create `assets/js/fs-express-checkout.js`:
     'use strict';
 
     function getAjaxURL(endpoint) {
-        return woocommerce_fastspring_params.ajax_url.toString().replace('%%endpoint%%', endpoint);
+        return woocommerce_fastspring_express_params.ajax_url.toString().replace('%%endpoint%%', endpoint);
     }
 
     // SBL callback stubs required by the script tag data-* attributes.
@@ -1350,7 +1352,7 @@ Create `assets/js/fs-express-checkout.js`:
     // Popup closed -> ask WooCommerce for the receipt URL (completes the order).
     window.fastspringPopupCloseHandler = function (data) {
         if (data && data.reference) {
-            data.security = woocommerce_fastspring_params.nonce.receipt;
+            data.security = woocommerce_fastspring_express_params.nonce.receipt;
             $.ajax({
                 type: 'POST',
                 dataType: 'json',
@@ -1390,7 +1392,7 @@ Create `assets/js/fs-express-checkout.js`:
             url: getAjaxURL('fssg_wc_fastspring_express_order'),
             dataType: 'json',
             data: {
-                security: woocommerce_fastspring_params.nonce.express,
+                security: woocommerce_fastspring_express_params.nonce.express,
                 method: method,
                 product_id: productId,
                 cart: isCart ? 1 : 0,
@@ -1467,6 +1469,14 @@ If any task deviated from this plan, update this file and the design spec so doc
 git add -A docs/
 git commit -m "docs: note plan/spec updates"
 ```
+
+---
+
+## Implementation drift (recorded during execution)
+
+- **Task 4:** the `get_receipt` AJAX alias is registered as `wc_ajax_wc_fastspring_get_receipt` (not only `wc_ajax_fssg_wc_fastspring_get_receipt`) so the existing popup-close flow resolves. This was already in the plan spec.
+- **Task 7 (deviation):** the express checkout script localizes its own global `woocommerce_fastspring_express_params` (and filter hook) instead of reusing `woocommerce_fastspring_params`. Reason: the checkout script localizes `woocommerce_fastspring_params` via `wp_localize_script`, and on product/cart pages where the gateway script is also enqueued it clobbers the express params (missing `nonce.express`). Task 8's JS therefore reads `woocommerce_fastspring_express_params` throughout.
+- **Task 7 (small addition):** orders created by express checkout store `_fssg_express_source` meta (`product` or `cart`); `ajax_express_order()` guards the cart branch against an empty cart; `ajax_get_receipt()` only calls `WC()->cart->empty_cart()` when the order was NOT a product-source express purchase (product express never touched the cart). Both order creators snapshot express-specific request values locally so the cart payload builder (which reads `order_awaiting_payment`/`current_order`) cannot pick up a stale pending order.
 
 ---
 
