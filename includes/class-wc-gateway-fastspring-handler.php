@@ -63,15 +63,20 @@ class fssg_WC_Gateway_FastSpring_Handler
 
     /**
      * If API credentials provided we can check for order completion on popup close
+     *
+     * @param string      $id   FastSpring order ID.
+     * @param object|null $data Optional pre-fetched order details to avoid a
+     *                          second API call when the caller already has them.
+     * @return string
      */
-    public function get_order_status($id)
+    public function get_order_status($id, $data = null)
     {
         if (empty(self::get_setting('api_username')) || empty(self::get_setting('api_password'))) {
             $this->log('No API credentials - skipping API order confirm');
             return 'pending';
         }
 
-        $data = $this->get_order_details($id);
+        $data = $data ? $data : $this->get_order_details($id);
 
         if ($data && isset($data->completed) && true === $data->completed) {
             $this->log(sprintf('API order %s completion checked', $id));
@@ -207,8 +212,11 @@ class fssg_WC_Gateway_FastSpring_Handler
         // Popup closed with payment
         if ($order && !empty($payload->reference)) {
 
+            $fs_order_id = isset($payload->id) ? sanitize_text_field($payload->id) : '';
+            $order_details = $this->get_order_details($fs_order_id);
+
             // Get API order status if available
-            $status = $this->get_order_status(isset($payload->id) ? $payload->id : '');
+            $status = $this->get_order_status($fs_order_id, $order_details);
 
             // Remove cart
             WC()->cart->empty_cart();
@@ -219,7 +227,7 @@ class fssg_WC_Gateway_FastSpring_Handler
             if ($status === 'completed' && $order->payment_complete($payload->reference)) {
                 $this->log(sprintf('Marking order ID %s as completed', $order->get_id()));
                 $order->add_order_note(sprintf(__('FastSpring payment approved (ID: %1$s)', 'woocommerce'), $order->get_id()));
-                $this->copy_customer_fields($order, $this->get_order_details(isset($payload->id) ? sanitize_text_field($payload->id) : ''));
+                $this->copy_customer_fields($order, $order_details);
             }
             // We could have a race condition where FS already called webhook so lets not assume its pending
             elseif ($order_status != 'completed') {
