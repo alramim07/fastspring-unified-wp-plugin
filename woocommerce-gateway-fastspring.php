@@ -219,9 +219,11 @@ if (!class_exists('fssg_WC_FastSpring')):
             include_once dirname(__FILE__) . '/includes/class-wc-gateway-fastspring-handler.php';
             include_once dirname(__FILE__) . '/includes/class-wc-fastspring-order-flow.php';
             include_once dirname(__FILE__) . '/includes/class-wc-fastspring-express-checkout.php';
+            include_once dirname(__FILE__) . '/includes/class-wc-fastspring-customer-creation.php';
 
             new WC_FastSpring_Order_Flow();
             new WC_FastSpring_Express_Checkout();
+            new WC_FastSpring_Customer_Creation();
         }
 
         /**
