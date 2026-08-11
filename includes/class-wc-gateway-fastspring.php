@@ -286,10 +286,16 @@ class fssg_WC_Gateway_FastSpring extends WC_Payment_Gateway
     public function process_payment($order_id)
     {
         $order = wc_get_order($order_id);
-        $payload = fssg_WC_Gateway_FastSpring_Builder::get_secure_json_payload();
+        $session = fssg_WC_Gateway_FastSpring_Builder::get_secure_json_payload();
+
+        $locale = WC_FastSpring_Advanced_Settings::get_site_locale();
+        if (!empty($locale)) {
+            $session['locale'] = $locale;
+        }
+
         return array(
             'result' => 'success',
-            'session' => $payload,
+            'session' => $session,
         );
     }
 

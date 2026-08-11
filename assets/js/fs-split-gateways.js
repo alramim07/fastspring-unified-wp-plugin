@@ -54,6 +54,10 @@
             // 2️⃣ Load the secure payload from WooCommerce
             fastspring.builder.secure(e.payload, e.key);
 
+            if (e.locale && e.locale.language) {
+                fastspring.builder.language(e.locale.language);
+            }
+
             // 3️⃣ Wait briefly to ensure the session initializes
             setTimeout(function () {
                 fastspring.builder.checkout();

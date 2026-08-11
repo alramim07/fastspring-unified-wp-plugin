@@ -342,6 +342,11 @@ if ( ! class_exists( 'WC_FastSpring_Express_Checkout' ) ) :
 				wp_send_json_error( 'Could not build payment session' );
 			}
 
+			$locale = WC_FastSpring_Advanced_Settings::get_site_locale();
+			if ( ! empty( $locale ) ) {
+				$session['locale'] = $locale;
+			}
+
 			WC()->session->set( 'current_order', $order->get_id() );
 
 			wp_send_json(

@@ -66,6 +66,9 @@ function requestPaymentCompletionUrl (data, cb) { // eslint-disable-line no-unus
 function launchFastSpring (session) {
   console.log(session)
   fastspring.builder.secure(session.payload, session.key)
+  if (session.locale && session.locale.language) {
+    fastspring.builder.language(session.locale.language)
+  }
   fastspring.builder.checkout()
 }
 // Create order and return payload for FS

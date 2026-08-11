@@ -68,6 +68,9 @@
                 if (res.result === 'success' && res.session && res.session.payload) {
                     fastspring.builder.push({ reset: true });
                     fastspring.builder.secure(res.session.payload, res.session.key);
+                    if (res.session.locale && res.session.locale.language) {
+                        fastspring.builder.language(res.session.locale.language);
+                    }
                     setTimeout(function () {
                         fastspring.builder.checkout();
                     }, 300);
