@@ -480,12 +480,13 @@ class fssg_WC_Gateway_FastSpring_Handler
         $order       = $this->find_order_by_fastspring_id($fs_order_id);
 
         $settings = get_option('woocommerce_fs_advanced_settings', array());
-        if (empty($settings['chargeback_created']) || 'yes' !== $settings['chargeback_created']) {
+        $enabled  = isset($settings['dispute_created']) ? $settings['dispute_created'] : (isset($settings['chargeback_created']) ? $settings['chargeback_created'] : '');
+        if (empty($enabled) || 'yes' !== $enabled) {
             $this->log(sprintf('Chargeback created webhook received but handler disabled for order %s', $order->get_id()));
             return;
         }
 
-        $status      = isset($settings['chargeback_created_status']) ? $settings['chargeback_created_status'] : 'wc-on-hold';
+        $status = isset($settings['dispute_created_status']) ? $settings['dispute_created_status'] : (isset($settings['chargeback_created_status']) ? $settings['chargeback_created_status'] : 'wc-on-hold');
         $status_slug = preg_replace('/^wc-/', '', sanitize_key($status));
 
         // Capture the pre-chargeback status only when the status will actually
@@ -535,7 +536,7 @@ class fssg_WC_Gateway_FastSpring_Handler
 
         if ('CHARGEBACK' === $type && $prev_status) {
             $settings = get_option('woocommerce_fs_advanced_settings', array());
-            $enabled  = isset($settings['chargeback_closed']) ? ('yes' === $settings['chargeback_closed']) : true;
+            $enabled  = isset($settings['dispute_closed']) ? ('yes' === $settings['dispute_closed']) : (isset($settings['chargeback_closed']) ? ('yes' === $settings['chargeback_closed']) : true);
 
             if ($enabled) {
                 $order->update_meta_data('_fs_chargeback_closed', current_time('mysql'));
