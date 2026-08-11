@@ -110,6 +110,32 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 					'desc_tip'    => true,
 					'description' => __( 'The status assigned to an order when FastSpring confirms the payment.', 'fastspring-split-gateways' ),
 				),
+				'locale'                  => array(
+					'type'  => 'title',
+					'title' => __( 'Locale', 'fastspring-split-gateways' ),
+				),
+				'locale_type'             => array(
+					'title'       => __( 'Locale Type', 'fastspring-split-gateways' ),
+					'type'        => 'select',
+					'default'     => 'auto',
+					'options'     => array(
+						'auto'   => __( 'Auto', 'fastspring-split-gateways' ),
+						'custom' => __( 'Custom', 'fastspring-split-gateways' ),
+					),
+					'desc_tip'    => true,
+					'description' => __( 'Auto lets FastSpring detect the buyer\'s language automatically. Custom forces the Site Locale language in the checkout popup.', 'fastspring-split-gateways' ),
+				),
+				'site_locale'             => array(
+					'title'             => __( 'Site Locale', 'fastspring-split-gateways' ),
+					'type'              => 'select',
+					'default'           => 'en',
+					'options'           => self::get_supported_languages(),
+					'desc_tip'          => true,
+					'description'       => __( 'The language used in the FastSpring checkout popup.', 'fastspring-split-gateways' ),
+					'custom_attributes' => array(
+						'data-show-if' => array( 'locale_type' => 'custom' ),
+					),
+				),
 				'refund_cancel'           => array(
 					'title'       => __( 'Refund On Cancel', 'fastspring-split-gateways' ),
 					'type'        => 'checkbox',
@@ -117,34 +143,45 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 					'desc_tip'    => true,
 					'description' => __( 'If enabled, the plugin will process a refund in FastSpring when the order status is set to cancelled.', 'fastspring-split-gateways' ),
 				),
-				'chargebacks'             => array(
+				'disputes'                => array(
 					'type'  => 'title',
-					'title' => __( 'Chargeback Settings', 'fastspring-split-gateways' ),
+					'title' => __( 'Dispute Settings', 'fastspring-split-gateways' ),
 				),
-				'chargeback_created'      => array(
-					'title'       => __( 'Chargeback Created', 'fastspring-split-gateways' ),
+				'dispute_created'         => array(
+					'title'       => __( 'Dispute Created', 'fastspring-split-gateways' ),
 					'type'        => 'checkbox',
 					'default'     => 'yes',
 					'desc_tip'    => true,
 					'description' => __( 'If enabled, the plugin listens for the <strong>chargeback.created</strong> webhook and sets the order\'s status to the configured value.', 'fastspring-split-gateways' ),
 				),
-				'chargeback_created_status' => array(
-					'title'             => __( 'Chargeback Created Order Status', 'fastspring-split-gateways' ),
+				'dispute_created_status'  => array(
+					'title'             => __( 'Dispute Created Order Status', 'fastspring-split-gateways' ),
 					'type'              => 'select',
 					'default'           => 'wc-on-hold',
 					'options'           => wc_get_order_statuses(),
 					'desc_tip'          => true,
 					'description'       => __( 'The status assigned to an order when a chargeback is filed.', 'fastspring-split-gateways' ),
 					'custom_attributes' => array(
-						'data-show-if' => array( 'chargeback_created' => true ),
+						'data-show-if' => array( 'dispute_created' => true ),
 					),
 				),
-				'chargeback_closed'       => array(
-					'title'       => __( 'Chargeback Closed', 'fastspring-split-gateways' ),
+				'dispute_closed'          => array(
+					'title'       => __( 'Dispute Closed', 'fastspring-split-gateways' ),
 					'type'        => 'checkbox',
 					'default'     => 'yes',
 					'desc_tip'    => true,
 					'description' => __( 'If enabled, the plugin restores the order to its pre-chargeback status when FastSpring closes the chargeback.', 'fastspring-split-gateways' ),
+				),
+				'customers'               => array(
+					'type'  => 'title',
+					'title' => __( 'Customer Settings', 'fastspring-split-gateways' ),
+				),
+				'customer_creation'       => array(
+					'title'       => __( 'Customer Creation', 'fastspring-split-gateways' ),
+					'type'        => 'checkbox',
+					'default'     => 'no',
+					'desc_tip'    => true,
+					'description' => __( 'If enabled, a FastSpring customer account is created when a customer registers on the site.', 'fastspring-split-gateways' ),
 				),
 				'display'                 => array(
 					'type'  => 'title',
@@ -160,6 +197,54 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 					'description' => __( 'The payment method icons shown next to the FastSpring payment methods at checkout.', 'fastspring-split-gateways' ),
 				),
 			);
+		}
+
+		/**
+		 * FastSpring-supported checkout languages (ISO 639-1).
+		 *
+		 * @return array Code => label.
+		 */
+		public static function get_supported_languages() {
+			return array(
+				'en' => 'English',
+				'de' => 'Deutsch',
+				'fr' => 'Français',
+				'es' => 'Español',
+				'it' => 'Italiano',
+				'pt' => 'Português',
+				'nl' => 'Nederlands',
+				'ja' => '日本語',
+				'zh' => '中文',
+				'ko' => '한국어',
+				'ru' => 'Русский',
+				'pl' => 'Polski',
+				'sv' => 'Svenska',
+				'da' => 'Dansk',
+				'no' => 'Norsk',
+				'fi' => 'Suomi',
+				'tr' => 'Türkçe',
+				'cs' => 'Čeština',
+				'el' => 'Ελληνικά',
+				'hu' => 'Magyar',
+				'ro' => 'Română',
+				'uk' => 'Українська',
+				'ar' => 'العربية',
+				'id' => 'Bahasa Indonesia',
+			);
+		}
+
+		/**
+		 * Configured checkout locale for the popup, or empty when Auto.
+		 *
+		 * @return array { 'language' => 'xx' } or array().
+		 */
+		public static function get_site_locale() {
+			$settings = get_option( 'woocommerce_fs_advanced_settings', array() );
+			if ( empty( $settings['locale_type'] ) || 'custom' !== $settings['locale_type'] || empty( $settings['site_locale'] ) ) {
+				return array();
+			}
+			$lang = sanitize_key( $settings['site_locale'] );
+			return $lang ? array( 'language' => $lang ) : array();
 		}
 
 		/**
@@ -221,8 +306,8 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 		 *
 		 * @return bool
 		 */
-		public function is_chargeback_created_enabled() {
-			return $this->is_active( 'chargeback_created' );
+		public function is_dispute_created_enabled() {
+			return $this->is_active( 'dispute_created' );
 		}
 
 		/**
@@ -230,8 +315,8 @@ if ( ! class_exists( 'WC_FastSpring_Advanced_Settings' ) ) :
 		 *
 		 * @return bool
 		 */
-		public function is_chargeback_closed_enabled() {
-			return $this->is_active( 'chargeback_closed' );
+		public function is_dispute_closed_enabled() {
+			return $this->is_active( 'dispute_closed' );
 		}
 	}
 
