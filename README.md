@@ -66,3 +66,65 @@ Full compatibility with **WooCommerce Subscriptions**:
 ---
 
 ## 📂 Directory Layout
+
+```
+├── assets/                          # Payment SVG brand icons and checkout styling
+├── docs/                            # Integration guides and webhook specifications
+├── includes/
+│   ├── admin/                       # Gateway settings pages and admin tabs
+│   ├── class-fastspring-sub-gateways.php      # Split gateway registration engine
+│   ├── class-wc-fastspring-customer-creation.php # FastSpring Accounts API sync
+│   ├── class-wc-fastspring-express-checkout.php   # Express checkout handlers
+│   ├── class-wc-fastspring-order-flow.php         # Order lifecycle transition handlers
+│   ├── class-wc-gateway-fastspring-builder.php    # Checkout payload builder
+│   ├── class-wc-gateway-fastspring-handler.php    # Webhook listener & signature validation
+│   └── class-wc-gateway-fastspring.php            # Primary gateway core
+├── readme.txt                       # WordPress.org standard metadata
+├── woocommerce-gateway-fastspring.php # Plugin bootstrap file
+└── uninstall.php                    # Clean database purge on plugin removal
+```
+
+---
+
+## ⚙️ Requirements & Compatibility
+
+| Platform / Dependency | Supported Version |
+|---|---|
+| **WordPress** | 6.0+ (Tested up to 6.6+) |
+| **WooCommerce** | 3.0.0+ (Tested up to 9.x) |
+| **PHP** | 8.0 / 8.1 / 8.2 / 8.3 |
+| **Dependencies** | `openssl`, `curl`, `json` PHP extensions |
+| **SSL** | Required for production Webhook and SBL communication |
+
+---
+
+## 🚀 Installation & Configuration
+
+### 1. Installation
+1. Download or package the plugin directory into `fastspring-unified-wp-plugin.zip`.
+2. In your WordPress admin, navigate to **Plugins $\rightarrow$ Add New $\rightarrow$ Upload Plugin**.
+3. Choose the ZIP archive and click **Install Now**, then **Activate Plugin**.
+
+### 2. FastSpring API Credentials Setup
+1. In WordPress Admin, navigate to **WooCommerce $\rightarrow$ Settings $\rightarrow$ Payments $\rightarrow$ FastSpring**.
+2. Configure the following parameters:
+   - **Storefront Path:** Your FastSpring storefront identifier (e.g., `company.onfastspring.com/store`).
+   - **API Access Key:** FastSpring API credential username.
+   - **Private Key:** RSA private key configured in your FastSpring Dashboard for payload decryption.
+   - **Sandbox Mode:** Toggle enabled for staging/development testing.
+3. Configure your Webhook URL in your FastSpring Dashboard pointing to:
+   ```
+   https://yourdomain.com/?wc-api=wc_gateway_fastspring
+   ```
+
+---
+
+## 🧪 Testing & Verification
+
+- **Sandbox Transactions:** Toggle "Test Mode" to run test checkouts using FastSpring test credit cards and simulated subscription cycles.
+- **Debug Logs:** Inspect real-time transaction and webhook logs under **WooCommerce $\rightarrow$ Status $\rightarrow$ Logs** (select `fastspring-*`).
+
+---
+
+## 📄 License
+This project is licensed under the GNU General Public License v2.0 or later (GPL-2.0+).
