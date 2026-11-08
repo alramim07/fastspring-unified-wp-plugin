@@ -1,71 +1,68 @@
-# FastSpring Unified
+# FastSpring Unified Payment Gateway for WooCommerce
 
-A WordPress/WooCommerce plugin that provides FastSpring payment gateway integration with support for multiple payment methods.
+[![WordPress](https://img.shields.io/badge/WordPress-%3E%3D6.0-21759B?style=for-the-badge&logo=wordpress&logoColor=white)](https://wordpress.org)
+[![WooCommerce](https://img.shields.io/badge/WooCommerce-%3E%3D3.0-96588A?style=for-the-badge&logo=woocommerce&logoColor=white)](https://woocommerce.com)
+[![PHP](https://img.shields.io/badge/PHP-%3E%3D8.0-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
+[![Version](https://img.shields.io/badge/Version-2.2.5-brightgreen?style=for-the-badge)]()
+[![License](https://img.shields.io/badge/License-GPL--2.0%2B-blue?style=for-the-badge)]()
 
-## Description
+An enterprise-grade **FastSpring Payment Gateway & Subscription Management** integration for **WooCommerce**. Engineered to split FastSpring's monolithic hosted checkout into distinct, unbundled payment methods directly within the native WooCommerce checkout experience—while delivering full automated webhook reconciliation, account creation via FastSpring API, and WooCommerce Cart & Checkout Blocks compatibility.
 
-FastSpring Unified is a WooCommerce payment gateway plugin that integrates with [FastSpring](https://fastspring.com), a complete e-commerce platform. This plugin splits the FastSpring payment gateway into separate payment methods, giving you more control over how each payment option appears at checkout.
+---
 
-### Features
+## 🏗️ Architecture & Payment Flow
 
-- **Multiple Payment Methods**: Separate gateways for:
-  - PayPal
-  - Credit Card
-  - Amazon Pay
-  - Google Pay
-  - Wire Transfer
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer as 🛒 Customer
+    participant WC as 🛍️ WooCommerce (Classic / Blocks)
+    participant Plugin as ⚙️ FastSpring Unified Plugin
+    participant FS_API as 🌐 FastSpring SBL / Accounts API
+    participant Webhook as ⚡ FastSpring Webhook Listener
 
-- **WooCommerce Subscriptions Support**: Full support for subscription lifecycle events including:
-  - Subscription activation
-  - Subscription cancellation
-  - Subscription suspension
-  - Subscription reactivation
-  - Subscription amount changes
-  - Subscription date changes
-  - Multiple subscriptions
+    Customer->>WC: Selects Gateway (Credit Card, PayPal, Google Pay, Amazon Pay, Wire)
+    WC->>Plugin: Process Checkout & Validate Order
+    Plugin->>FS_API: Create Customer & Session Payload (SBL / Storefront)
+    FS_API-->>Customer: Render Isolated Popup Checkout
+    Customer->>FS_API: Authorizes Payment
+    FS_API->>Webhook: Asynchronous HMAC-Signed Webhook (order.completed)
+    Webhook->>Plugin: Verify Signature & Order Payload
+    Plugin->>WC: Update Order Status -> Processing / Completed & Store License Data
+    WC-->>Customer: Display Thank You / Fulfillment Page
+```
 
-- **WooCommerce Blocks Integration**: Full support for WooCommerce Block Checkout
+---
 
-- **Customizable Checkout**: Options to remove billing address fields from checkout
+## 🌟 Key Technical Capabilities
 
-- **Test Mode**: Built-in sandbox testing environment
+### 1. 🔀 Split Gateway Architecture
+Unlike standard FastSpring integrations that force shoppers into a generic hosted page, this plugin decomposes FastSpring into isolated WooCommerce gateway instances:
+- **Credit Card / Debit Card**
+- **PayPal Express**
+- **Google Pay**
+- **Amazon Pay**
+- **Wire Transfer / ACH**
 
-- **Logging**: Debug logging capability for troubleshooting
+Each gateway maintains independent admin controls, title overrides, custom SVG payment badges, and display ordering.
 
-## Requirements
+### 2. 🧱 Modern WooCommerce Blocks Compatibility
+- Fully integrated with WooCommerce Cart & Checkout Blocks via `@woocommerce/blocks-registry` and PHP block integration classes.
+- Zero checkout friction across both modern Gutenberg-based checkouts and legacy shortcode templates.
 
-- WordPress 6.0+
-- WooCommerce 3.0.0+
-- PHP 8.0+
-- SSL Certificate (required for live transactions)
+### 3. 🔄 Complete Subscription Lifecycle Management
+Full compatibility with **WooCommerce Subscriptions**:
+- **Automated Lifecycle Sync:** Real-time state synchronization for subscription activation, cancellation, suspension, and reactivation.
+- **Dynamic Adjustments:** Seamless webhook processing for recurring subscription price adjustments and billing cycle alterations.
 
-## Installation
+### 4. 👤 Automated Account Provisioning via FastSpring API
+- Integrates with FastSpring Accounts API (`class-wc-fastspring-customer-creation.php`) to automatically provision or link FastSpring customer records when users register on WooCommerce.
 
-1. Download the plugin zip file
-2. Go to WordPress Admin > Plugins > Add New > Upload Plugin
-3. Upload the zip file and activate
-4. Go to WooCommerce > Settings > Payments
-5. Configure your FastSpring settings
+### 5. 🛡️ Enterprise Security & Webhook Reconciliation
+- **HMAC RSA-2048 Verification:** Webhook payloads are verified against the configured FastSpring private key before updating order state.
+- **Idempotent Order Handling:** Defense-in-depth protection against duplicate webhook deliveries.
+- **Audit Logging:** System debug logging via `WC_Logger` with sensitive token masking.
 
-## Configuration
+---
 
-### Required Settings
-
-1. **Storefront Path**: Your FastSpring storefront URL (e.g., `mystore.onfastspring.com/mystore`)
-2. **Access Key**: Your FastSpring access key
-3. **Private Key**: Your RSA private key
-
-### Optional Settings
-
-- **Test Mode**: Enable to test transactions without processing real payments
-- **Payment Icons**: Select which payment method icons to display
-- **Billing Address**: Option to remove billing address fields
-- **Logging**: Enable debug logging
-
-## Support
-
-For support inquiries, please contact your FastSpring account representative or visit the [FastSpring documentation](https://docs.fastspring.com).
-
-## Version
-
-2.2.5
+## 📂 Directory Layout
